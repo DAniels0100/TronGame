@@ -4,9 +4,8 @@ namespace TronFinal
 {
     public partial class Form1 : Form
     {
-
-        private List<Bike> bike = new List<Bike>();
-        private Bike Power = new Bike();
+        private LinkedList<Bike> snake = new LinkedList<Bike>(); // Using LinkedList instead of List
+        private Bike power = new Bike();
 
         int maxWidth;
         int maxHeight;
@@ -17,7 +16,6 @@ namespace TronFinal
         Random random = new Random();
 
         bool goLeft, goRight, goUp, goDown;
-
 
         public Form1()
         {
@@ -72,9 +70,8 @@ namespace TronFinal
 
         private void TimeEvent(object sender, EventArgs e)
         {
-            
-            //setting directions
-            if (goLeft) 
+            // Setting directions
+            if (goLeft)
             {
                 Settings.Directions = "left";
             }
@@ -90,67 +87,75 @@ namespace TronFinal
             {
                 Settings.Directions = "up";
             }
-            
-            //move bike
-            for (int i = bike.Count - 1; i >= 0; i--)
-            {
-                if (i == 0)
-                {
-                    switch (Settings.Directions)
-                    {
-                        case "left":
-                            bike[i].X--;
-                            break;
-                        case "right":
-                            bike[i].X++;
-                            break;
-                        case "up":
-                            bike[i].Y--;
-                            break;
-                        case "down":
-                            bike[i].Y++;
-                            break;
-                    }
 
-
-                    if (bike[i].X < 0)
-                    {
-                        bike[i].X = maxWidth;
-                    }
-                    if (bike[i].X > maxWidth)
-                    {
-                        bike[i].X = 0;
-                    }
-                    if (bike[i].Y < 0)
-                    {
-                        bike[i].Y = maxHeight;
-                    }
-                    if (bike[i].Y > maxHeight)
-                    {
-                        bike[i].Y = 0;
-                    }
-
-                    if (bike[i].X==Power.X && bike[i].Y == Power.Y) 
-                    {
-                        TakePower();
-                    }
-
-                    for (int j = 1; j < bike.Count; j++)
-                    {
-                        if (bike[i].X == bike[j].X && bike[i].Y == bike[j].Y)
-                        {
-                            StopGame();
-                        }
-                    }
-                }
-                else
-                {
-                    bike[i].X = bike[i-1].X;
-                    bike[i].Y = bike[i-1].Y;
-                }
-            }
+            MoveSnake();
+            CheckCollisions();
 
             GameCanvas.Invalidate();
+        }
+
+        private void MoveSnake()
+        {
+            // Get the current head of the snake
+            var head = snake.First.Value;
+            Bike newHead = new Bike { X = head.X, Y = head.Y };
+
+            // Move the head in the current direction
+            switch (Settings.Directions)
+            {
+                case "left":
+                    newHead.X--;
+                    break;
+                case "right":
+                    newHead.X++;
+                    break;
+                case "up":
+                    newHead.Y--;
+                    break;
+                case "down":
+                    newHead.Y++;
+                    break;
+            }
+
+            WrapAroundEdges(newHead);
+
+            // Add new head to the snake
+            snake.AddFirst(newHead);
+
+            // Remove the tail of the snake
+            snake.RemoveLast();
+        }
+
+        private void WrapAroundEdges(Bike head)
+        {
+            // Handle edge wrapping logic
+            if (head.X < 0) head.X = maxWidth;
+            if (head.X > maxWidth) head.X = 0;
+            if (head.Y < 0) head.Y = maxHeight;
+            if (head.Y > maxHeight) head.Y = 0;
+        }
+
+        private void CheckCollisions()
+        {
+            var head = snake.First.Value;
+
+            // Check for collisions with power-up
+            if (head.X == power.X && head.Y == power.Y)
+            {
+                TakePower();
+            }
+
+            // Check for self-collision
+            var current = snake.First.Next; // Start checking from the second node
+            while (current != null)
+            {
+                if (head.X == current.Value.X && head.Y == current.Value.Y)
+                {
+                    StopGame();
+                    break;
+                }
+                current = current.Next;
+            }
         }
 
         private void UpdatePictureBox(object sender, PaintEventArgs e)
@@ -159,77 +164,77 @@ namespace TronFinal
 
             Brush bikeColour;
 
-            for (int i = 0; i < bike.Count; i++)
+            foreach (var segment in snake)
             {
-                if (i == 0)
+                if (segment == snake.First.Value)
                 {
-                    bikeColour = Brushes.Black;
+                    bikeColour = Brushes.Black; // Head of the snake
                 }
                 else
                 {
-                    bikeColour = Brushes.DarkGreen;
+                    bikeColour = Brushes.DarkGreen; // Body of the snake
                 }
 
                 canvas.FillEllipse(bikeColour, new Rectangle
-                    (
-                    bike[i].X * Settings.Width,
-                    bike[i].Y * Settings.Height,
+                (
+                    segment.X * Settings.Width,
+                    segment.Y * Settings.Height,
                     Settings.Width, Settings.Height
-                    ));
+                ));
             }
-
 
             canvas.FillEllipse(Brushes.DarkRed, new Rectangle
             (
-            Power.X * Settings.Width,
-            Power.Y * Settings.Height,
-            Settings.Width, Settings.Height
+                power.X * Settings.Width,
+                power.Y * Settings.Height,
+                Settings.Width, Settings.Height
             ));
         }
 
         private void RestartGame()
         {
-            maxWidth = GameCanvas.Width / Settings.Width - 1; 
+            maxWidth = GameCanvas.Width / Settings.Width - 1;
             maxHeight = GameCanvas.Height / Settings.Height - 1;
-            
 
-            bike.Clear();
+            snake.Clear();
 
             StartBtn.Enabled = false;
 
             score = 0;
             Scoretxt.Text = "Score: " + score;
 
-            Bike head = new Bike { X = 10, Y = 5};
-            bike.Add(head); //head of the bike movement
+            Bike head = new Bike { X = 10, Y = 5 };
+            snake.AddFirst(head); // Initialize the head of the snake
 
-            for (int i = 0; i < 10; i++) 
+            for (int i = 0; i < 10; i++)
             {
                 Bike body = new Bike();
-                bike.Add(body);
+                snake.AddLast(body); // Add the initial body parts of the snake
             }
 
-            Power = new Bike { X = random.Next(3, maxWidth), Y = random.Next(3, maxHeight) };
+            power = new Bike { X = random.Next(3, maxWidth), Y = random.Next(3, maxHeight) };
 
             GameTime.Start();
         }
 
         private void TakePower()
         {
-            Power = new Bike { X = random.Next(3, maxWidth), Y = random.Next(3, maxHeight) };
+            // Spawn a new power-up and grow the snake
+            power = new Bike { X = random.Next(3, maxWidth), Y = random.Next(3, maxHeight) };
+
+            // Grow the snake by adding a new segment to the tail
+            var tail = snake.Last.Value;
+            Bike newTail = new Bike { X = tail.X, Y = tail.Y };
+            snake.AddLast(newTail);
+
+            score++;
+            Scoretxt.Text = "Score: " + score;
         }
 
         private void StopGame()
         {
             GameTime.Stop();
-            StartBtn.Enabled=true;
-
-
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
+            StartBtn.Enabled = true;
         }
     }
 }

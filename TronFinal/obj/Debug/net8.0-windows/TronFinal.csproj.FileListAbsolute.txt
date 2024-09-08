@@ -14,3 +14,4 @@ C:\Users\sealc\OneDrive\Escritorio\proyecto-1 TRON\TronFinal\TronFinal\obj\Debug
 C:\Users\sealc\OneDrive\Escritorio\proyecto-1 TRON\TronFinal\TronFinal\obj\Debug\net8.0-windows\TronFinal.pdb
 C:\Users\sealc\OneDrive\Escritorio\proyecto-1 TRON\TronFinal\TronFinal\obj\Debug\net8.0-windows\TronFinal.genruntimeconfig.cache
 C:\Users\sealc\OneDrive\Escritorio\proyecto-1 TRON\TronFinal\TronFinal\obj\Debug\net8.0-windows\ref\TronFinal.dll
+C:\Users\sealc\OneDrive\Escritorio\proyecto-1 TRON\TronFinal\TronFinal\obj\Debug\net8.0-windows\TronFinal.sourcelink.json

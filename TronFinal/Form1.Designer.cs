@@ -69,7 +69,6 @@
             Scoretxt.Name = "Scoretxt";
             Scoretxt.Size = new Size(0, 15);
             Scoretxt.TabIndex = 2;
-            Scoretxt.Click += label1_Click;
             // 
             // Form1
             // 
