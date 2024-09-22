@@ -4,27 +4,35 @@ namespace TronFinal
 {
     public partial class Form1 : Form
     {
-        private LinkedList<Bike> player  = new LinkedList<Bike>(); // player
+        private LinkedList<Bike> player = new LinkedList<Bike>(); // Player
         private List<LinkedList<Bike>> bots = new List<LinkedList<Bike>>(); // Bots list
-        private Dictionary<LinkedList<Bike>, string> botsDirections = new Dictionary<LinkedList<Bike>, string>(); // Dictionary to store each random bot's direction
+        private Dictionary<LinkedList<Bike>, string> botsDirections = new Dictionary<LinkedList<Bike>, string>(); // Bots directions
         private Bike power = new Bike();
-        
-        
+
         Random random = new Random();
+
+        private Stack<string> powerStack = new Stack<string>(); // Stack to store power-ups
+        private bool isPowerActive = false; // To track if a power-up is currently active
+        private bool isInvincible = false; // To track if invincibility is active
+        private bool isSpeedBoosted = false; // To track if Speed Boost is active
 
         int playerSpeed = 5;
         int maxWidth;
         int maxHeight;
 
-        int score;
-        int highScore;
-
-        
+        private Color[] rainbowColors = new Color[]
+        {
+            Color.Red, Color.Orange, Color.Yellow, Color.Green, Color.Blue, Color.Indigo, Color.Violet
+        };
+        private int currentRainbowColorIndex = 0; // Track the current color index
 
         bool goLeft, goRight, goUp, goDown;
 
-        private System.Windows.Forms.Timer botTimer = new System.Windows.Forms.Timer(); // Timer to change directions of bots snakes
+        private System.Windows.Forms.Timer botTimer = new System.Windows.Forms.Timer(); // Timer to change directions of bots
         private System.Windows.Forms.Timer gameTimer = new System.Windows.Forms.Timer(); // Main game timer 
+        private System.Windows.Forms.Timer powerTimer = new System.Windows.Forms.Timer(); // Timer for power duration
+         
+
 
         public Form1()
         {
@@ -32,17 +40,20 @@ namespace TronFinal
             new Settings();
 
             // Set up timer for bots
-            botTimer.Interval = 3000; 
+            botTimer.Interval = 3000;
             botTimer.Tick += ChangeBotsDirection;
             botTimer.Start();
 
             // Set up main game timer
-            gameTimer.Interval = 50; // Set to 100ms for smoother movement
+            gameTimer.Interval = 50; 
             gameTimer.Tick += TimeEvent;
             gameTimer.Start();
+
+            powerTimer.Interval = 3000;
+            powerTimer.Tick += DeactivatePower; // Define what happens when the timer ends
         }
 
-        // identify key press
+        // Identify key press
         private void KeyIsDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left && Settings.Directions != "right")
@@ -61,108 +72,61 @@ namespace TronFinal
             {
                 goDown = true;
             }
+            if (e.KeyCode == Keys.Space)
+            {
+                ActivatePower();
+            }
         }
 
-        // identify key release
+        // Identify key release
         private void KeyIsUp(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Left)
-            {
-                goLeft = false;
-            }
-            if (e.KeyCode == Keys.Right)
-            {
-                goRight = false;
-            }
-            if (e.KeyCode == Keys.Up)
-            {
-                goUp = false;
-            }
-            if (e.KeyCode == Keys.Down)
-            {
-                goDown = false;
-            }
+            if (e.KeyCode == Keys.Left) goLeft = false;
+            if (e.KeyCode == Keys.Right) goRight = false;
+            if (e.KeyCode == Keys.Up) goUp = false;
+            if (e.KeyCode == Keys.Down) goDown = false;
         }
 
-        //start the game
+        // Start the game
         private void StartGame(object sender, EventArgs e)
         {
             RestartGame();
         }
 
-        //handle event
+        // Handle event
         private void TimeEvent(object sender, EventArgs e)
         {
-            // Update the direction for the player 
-            if (goLeft)
-            {
-                Settings.Directions = "left";
-            }
-            if (goRight)
-            {
-                Settings.Directions = "right";
-            }
-            if (goDown)
-            {
-                Settings.Directions = "down";
-            }
-            if (goUp)
-            {
-                Settings.Directions = "up";
-            }
+            // Update the direction for the player
+            if (goLeft) Settings.Directions = "left";
+            if (goRight) Settings.Directions = "right";
+            if (goDown) Settings.Directions = "down";
+            if (goUp) Settings.Directions = "up";
 
-            // Move the player 
-            handleMovement(player, Settings.Directions);
+            // Move the player
+            MoveBikes(player, Settings.Directions);
 
             // Move all the bots
             foreach (var bot in bots)
             {
-                handleMovement(bot, botsDirections[bot]);
+                MoveBikes(bot, botsDirections[bot]);
             }
 
             CheckCollisions();
             GameCanvas.Invalidate();
         }
 
-        //handle the player movement
-        private void handleMovement(LinkedList<Bike> bike, string direction)
+        // Handle the player movement
+        private void MoveBikes(LinkedList<Bike> bikeList, string direction)
         {
-            if (bike.First == null || bike.Last == null) return; // Ensure snake is not null
+            if (bikeList.First == null || bikeList.Last == null) return; // Ensure the bike is not null
 
-            var head = bike.First.Value;
-            Bike newHead = new Bike { X = head.X, Y = head.Y };
+            var head = bikeList.First.Value;
+            Bike newHead = new Bike(head.X, head.Y);
+            newHead.Move(direction);
+            newHead.WrapAroundEdges(maxWidth, maxHeight);
 
-            // Move the head in the current direction
-            switch (direction)
-            {
-                case "left":
-                    newHead.X--;
-                    break;
-                case "right":
-                    newHead.X++;
-                    break;
-                case "up":
-                    newHead.Y--;
-                    break;
-                case "down":
-                    newHead.Y++;
-                    break;
-            }
-
-            WrapAroundEdges(newHead);
-
-            // make the bikes go forwards 
-            bike.AddFirst(newHead);
-            bike.RemoveLast(); 
-        }
-
-        private void WrapAroundEdges(Bike head)
-        {
-            // Handle edge wrapping logic
-            if (head.X < 0) head.X = maxWidth;
-            if (head.X > maxWidth) head.X = 0;
-            if (head.Y < 0) head.Y = maxHeight;
-            if (head.Y > maxHeight) head.Y = 0;
+            bikeList.AddFirst(newHead);
+            bikeList.RemoveLast();
         }
 
         private void CheckCollisions()
@@ -171,51 +135,37 @@ namespace TronFinal
 
             var head = player.First.Value;
 
-            // Check for collisions with power-up
-            if (head.X == power.X && head.Y == power.Y)
+            if (!isInvincible)
             {
-                TakePower();
-            }
-
-            // Check for self-collision 
-            var current = player.First.Next;
-            while (current != null)
-            {
-                if (head.X == current.Value.X && head.Y == current.Value.Y)
+                // Check for collisions with power-up
+                if (head.CollidesWith(power))
                 {
-                    StopGame();
-                    return;
+                    TakePower();
                 }
-                current = current.Next;
-            }
 
-            // Check collisions with bots
-            // Check collisions between player snake and random snakes (bots)
-            foreach (var bot in bots.ToList()) // Use ToList() to safely modify the collection during iteration
-            {
-                var botHead = bot.First?.Value;
-                if (botHead == null) continue; // Skip if the snake is empty
-
-                // Check collision between the player snake head and each segment of the random snake
-                foreach (var segment in bot)
+                // Check for self-collision
+                var current = player.First.Next;
+                while (current != null)
                 {
-                    if (head.X == segment.X && head.Y == segment.Y)
+                    if (head.CollidesWith(current.Value))
                     {
-                        StopGame(); // End the game if the player collides with a bot
+                        StopGame();
                         return;
                     }
+                    current = current.Next;
                 }
 
-                // Check for collisions between random snakes themselves
-                foreach (var otherBot in bots.ToList())
+                // Check collisions with bots
+                foreach (var bot in bots.ToList())
                 {
-                    if (otherBot == bot) continue; // Skip checking itself
-                    foreach (var otherSegment in otherBot)
+                    var botHead = bot.First?.Value;
+                    if (botHead == null) continue;
+
+                    foreach (var segment in bot)
                     {
-                        if (botHead.X == otherSegment.X && botHead.Y == otherSegment.Y)
+                        if (head.CollidesWith(segment))
                         {
-                            bots.Remove(bot); // Remove the snake that collided
-                            bots.Remove(otherBot); // Remove the other snake that it collided with
+                            StopGame();
                             return;
                         }
                     }
@@ -231,21 +181,23 @@ namespace TronFinal
 
             foreach (var segment in player)
             {
-                if (segment == player.First.Value)
+                // Check if the player is invincible to apply rainbow effect
+                if (isInvincible && segment == player.First.Value)
                 {
-                    bikeColour = Brushes.Black; // Head of the player's bike
+                    // Cycle through rainbow colors for the head
+                    bikeColour = new SolidBrush(rainbowColors[currentRainbowColorIndex]);
+
+                    // Move to the next color for the next tick
+                    currentRainbowColorIndex = (currentRainbowColorIndex + 1) % rainbowColors.Length;
                 }
                 else
                 {
-                    bikeColour = Brushes.DarkGreen; // Body of the player's bike
+                    // Regular bike colors
+                    bikeColour = segment == player.First.Value ? Brushes.Black : Brushes.DarkGreen;
                 }
 
-                canvas.FillEllipse(bikeColour, new Rectangle
-                (
-                    segment.X * Settings.Width,
-                    segment.Y * Settings.Height,
-                    Settings.Width, Settings.Height
-                ));
+                canvas.FillEllipse(bikeColour, new Rectangle(segment.X * Settings.Width, segment.Y * Settings.Height, Settings.Width, Settings.Height));
+
             }
 
             // Draw bots
@@ -253,76 +205,67 @@ namespace TronFinal
             {
                 foreach (var segment in bot)
                 {
-                    canvas.FillEllipse(Brushes.Blue, new Rectangle
-                    (
-                        segment.X * Settings.Width,
-                        segment.Y * Settings.Height,
-                        Settings.Width, Settings.Height
-                    ));
+                    canvas.FillEllipse(Brushes.Blue, new Rectangle(segment.X * Settings.Width, segment.Y * Settings.Height, Settings.Width, Settings.Height));
                 }
             }
 
-            canvas.FillEllipse(Brushes.DarkRed, new Rectangle
-            (
-                power.X * Settings.Width,
-                power.Y * Settings.Height,
-                Settings.Width, Settings.Height
-            ));
+            // Draw the power-up
+            canvas.FillEllipse(Brushes.White, new Rectangle(power.X * Settings.Width, power.Y * Settings.Height, Settings.Width, Settings.Height));
         }
 
-        //relaunche the game
         private void RestartGame()
         {
+            // create a new grid
+            Grid grid = new Grid();
+            for (int i = 1; i <= 100; i++) 
+            {
+                grid.AddNode(i);
+            }
+
+
             maxWidth = GameCanvas.Width / Settings.Width - 1;
             maxHeight = GameCanvas.Height / Settings.Height - 1;
 
-            player = new LinkedList<Bike>(); // Reset player 
+            player = new LinkedList<Bike>();
             bots.Clear();
             botsDirections.Clear();
 
             StartBtn.Enabled = false;
 
-            score = 0;
-            Scoretxt.Text = "Score: " + score;
 
-            Bike head = new Bike { X = 10, Y = 5 };
-            player.AddFirst(head); // Initialize the player
+
+            Bike head = new Bike(10, 5);
+            player.AddFirst(head);
 
             for (int i = 0; i < 3; i++)
             {
                 Bike body = new Bike();
-                player.AddLast(body); // Add the initial body parts of the player
+                player.AddLast(body);
             }
 
-            // Initialize bots
-            for (int i = 0; i < 5; i++) // quantity of bots
+            for (int i = 0; i < 5; i++)
             {
                 LinkedList<Bike> bot = new LinkedList<Bike>();
-                Bike randomHead = new Bike { X = random.Next(3, maxWidth), Y = random.Next(3, maxHeight) };
+                Bike randomHead = new Bike(random.Next(3, maxWidth), random.Next(3, maxHeight));
                 bot.AddFirst(randomHead);
 
-                for (int j = 0; j < 3; j++) // Initialize each bot with a length of 3
+                for (int j = 0; j < 3; j++)
                 {
-                    Bike body = new Bike { X = randomHead.X, Y = randomHead.Y };
+                    Bike body = new Bike(randomHead.X, randomHead.Y);
                     bot.AddLast(body);
                 }
 
                 bots.Add(bot);
-
-                // Assign a random initial direction to each bot
                 string[] directions = { "left", "right", "up", "down" };
                 string initialDirection = directions[random.Next(directions.Length)];
                 botsDirections[bot] = initialDirection;
             }
 
-            
-            //launch the game
             gameTimer.Start();
         }
 
         private void ChangeBotsDirection(object sender, EventArgs e)
         {
-            // Randomly change direction of each bot
             foreach (var bot in bots)
             {
                 string[] directions = { "left", "right", "up", "down" };
@@ -331,25 +274,73 @@ namespace TronFinal
             }
         }
 
+        private void ActivatePower()
+        {
+            if (powerStack.Count > 0 && !isPowerActive)
+            {
+                string powerUp = powerStack.Pop();
+
+                if (powerUp == "speed_boost")
+                {
+                    gameTimer.Interval = 20; // Apply power-up
+                    isPowerActive = true;
+                    isSpeedBoosted = true;
+                    powerTimer.Start(); // Start the 5-second timer
+                }
+                else if (powerUp == "invincible")
+                {
+                    isInvincible = true; // Make the player invincible
+                    isPowerActive = true;
+                    powerTimer.Start(); // Start the 5-second timer
+                }
+
+                isPowerActive = true; // Mark that a power is active
+                powerTimer.Start(); // Start the 5-second timer
+            }
+        }
+
+        // Deactivate the power-up after 5 seconds
+        private void DeactivatePower(object sender, EventArgs e)
+        {
+
+            // Revert power-up effects after 5 seconds
+            if (isInvincible)
+            {
+                isInvincible = false; // Deactivate invincibility
+                currentRainbowColorIndex = 0; // Reset rainbow color index
+            }
+
+            if (isSpeedBoosted)
+            {
+                gameTimer.Interval = 50; // Revert the speed boost
+            }
+
+            isPowerActive = false; // Mark power as inactive
+            powerTimer.Stop(); // Stop the timer
+        }
+
         private void TakePower()
         {
-            // Spawn a new power-up and grow the snake
-            power = new Bike { X = random.Next(10, maxWidth), Y = random.Next(10, maxHeight) };
+            power = new Bike(random.Next(10, maxWidth), random.Next(10, maxHeight));
 
-            // Grow the snake by adding a new segment to the tail
+            // Randomly assign a power-up (either speed boost or invincibility)
+            string[] possiblePowers = { "speed_boost", "invincible" };
+            string powerUp = possiblePowers[random.Next(possiblePowers.Length)];
+            powerStack.Push(powerUp);
+        }
+
+        private void TakeItem()
+        {
+            power = new Bike(random.Next(10, maxWidth), random.Next(10, maxHeight));
             var tail = player.Last.Value;
-            Bike newTail = new Bike { X = tail.X, Y = tail.Y };
-            player.AddLast(newTail); player.AddLast(newTail);
-
-            gameTimer.Interval = 200;
-
-            score++;
-            Scoretxt.Text = "Score: " + score;
+            Bike newTail = new Bike(tail.X, tail.Y);
+            player.AddLast(newTail);
+            player.AddLast(newTail);
         }
 
         private void StopGame()
         {
-            GameTime.Stop();
+            gameTimer.Stop();
             botTimer.Stop();
             StartBtn.Enabled = true;
         }

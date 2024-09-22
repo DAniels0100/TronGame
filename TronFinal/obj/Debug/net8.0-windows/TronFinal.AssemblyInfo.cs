@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TronFinal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a3a2c594a29aae2b8028d60d7258d717cd86877a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9ae2100f8cc697b3fe60adb46f92024e44a32cdd")]
 [assembly: System.Reflection.AssemblyProductAttribute("TronFinal")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TronFinal")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
