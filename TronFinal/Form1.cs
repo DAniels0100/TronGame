@@ -195,7 +195,7 @@ namespace TronFinal
                 string initialDirection = directions[random.Next(directions.Length)];
                 botsDirections[bot] = initialDirection;
             }
-
+            UpdatePowerStackDisplay();
             gameTimer.Start();
         }
 
@@ -339,7 +339,7 @@ namespace TronFinal
             // Dibujar los poderes (si están en el mapa)
             foreach (var power in powers)
             {
-                canvas.FillEllipse(Brushes.Orange, new Rectangle(power.X * Settings.Width, power.Y * Settings.Height, Settings.Width, Settings.Height));
+                canvas.FillEllipse(Brushes.White, new Rectangle(power.X * Settings.Width, power.Y * Settings.Height, Settings.Width, Settings.Height));
             }
 
             // Dibujar los ítems con colores diferentes según su tipo
@@ -354,7 +354,7 @@ namespace TronFinal
                         itemColour = Brushes.Green; // Color verde para "length"
                         break;
                     case "gas":
-                        itemColour = Brushes.Yellow; // Color amarillo para "gas"
+                        itemColour = Brushes.Purple; // Color amarillo para "gas"
                         break;
                     case "bomb":
                         itemColour = Brushes.Red; // Color rojo para "bomb"
@@ -397,7 +397,7 @@ namespace TronFinal
 
         private void AddGas()
         {
-            gasQuantity += 1000;
+            gasQuantity = 1000;
         }
 
         private void BombEffect()
@@ -434,7 +434,15 @@ namespace TronFinal
 
             string[] possiblePowers = { "speed_boost", "invincible" };
             string powerUp = possiblePowers[random.Next(possiblePowers.Length)];
-            powerStack.Push(powerUp);
+            if (powerStack.Count < 3)
+            {
+                powerStack.Push(powerUp);
+            }
+            else
+            { 
+                powerStack.Pop();
+                powerStack.Push(powerUp);
+            }
             
         }
 
