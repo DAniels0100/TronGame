@@ -8,57 +8,86 @@ namespace TronFinal
         private LinkedList<Bike> player = new LinkedList<Bike>(); // Player
         private List<LinkedList<Bike>> bots = new List<LinkedList<Bike>>(); // Bots list
         private Dictionary<LinkedList<Bike>, string> botsDirections = new Dictionary<LinkedList<Bike>, string>(); // Bots directions
-        private Bike power = new Bike();
-        private Bike item = new Bike();
-        private string currentItemType; // To store the type of the current item
+        private List<Bike> powers = new List<Bike>(); // Lista para almacenar los poderes
+        private List<Bike> items = new List<Bike>(); // Lista para almacenar los ítems
+        private Dictionary<Bike, string> itemTypes = new Dictionary<Bike, string>(); // Mapa para almacenar los tipos de ítems
+        private string currentItemType; // Para almacenar el tipo del ítem actual
 
         Random random = new Random();
 
-        
-        private Stack<string> powerStack = new Stack<string>(); // Stack to store power-ups
-        private bool isPowerActive = false; // To track if a power-up is currently active
-        private bool isInvincible = false; // To track if invincibility is active
-        private bool isSpeedBoosted = false; // To track if Speed Boost is active
 
-        int playerSpeed = 5;
+        private Label PowerStackLabel;
+        private Stack<string> powerStack = new Stack<string>(); // Stack para almacenar los poderes
+        private bool isPowerActive = false; // Para verificar si un poder está activo
+        private bool isInvincible = false; // Para verificar si la invencibilidad está activa
+        private bool isSpeedBoosted = false; // Para verificar si el aumento de velocidad está activo
+
+        int playerSpeed = 1;
         int maxWidth;
         int maxHeight;
-        int gasQuantity = 1000; // Starting gas quantity
+        int gasQuantity; // Cantidad inicial de gas
 
         private Color[] rainbowColors = new Color[]
         {
-            Color.Red, Color.Orange, Color.Yellow, Color.Green, Color.Blue, Color.Indigo, Color.Violet
+        Color.Red, Color.Orange, Color.Yellow, Color.Green, Color.Blue, Color.Indigo, Color.Violet
         };
-        private int currentRainbowColorIndex = 0; // Track the current color index
+        private int currentRainbowColorIndex = 0; // Para seguir el índice de colores
 
         bool goLeft, goRight, goUp, goDown;
 
-        private System.Windows.Forms.Timer botTimer = new System.Windows.Forms.Timer(); // Timer to change directions of bots
-        private System.Windows.Forms.Timer gameTimer = new System.Windows.Forms.Timer(); // Main game timer 
-        private System.Windows.Forms.Timer powerTimer = new System.Windows.Forms.Timer(); // Timer for power duration
-         
-
+        private System.Windows.Forms.Timer botTimer = new System.Windows.Forms.Timer(); // Temporizador para cambiar direcciones de los bots
+        private System.Windows.Forms.Timer gameTimer = new System.Windows.Forms.Timer(); // Temporizador principal del juego
+        private System.Windows.Forms.Timer powerTimer = new System.Windows.Forms.Timer(); // Temporizador para la duración de los poderes
+        private System.Windows.Forms.Timer spawnTimer = new System.Windows.Forms.Timer(); // Temporizador para la aparición de ítems y poderes
 
         public Form1()
         {
             InitializeComponent();
             new Settings();
 
-            // Set up timer for bots
+            // Configurar temporizador para generar ítems y poderes cada 3 segundos
+            spawnTimer.Interval = 6000; // 
+            spawnTimer.Tick += SpawnItemOrPower;
+            spawnTimer.Start();
+
+            // Configurar otros temporizadores
             botTimer.Interval = 3000;
             botTimer.Tick += ChangeBotsDirection;
             botTimer.Start();
 
-            // Set up main game timer
-            gameTimer.Interval = 50; 
+            gameTimer.Interval = 50;
             gameTimer.Tick += TimeEvent;
             gameTimer.Start();
 
             powerTimer.Interval = 3000;
-            powerTimer.Tick += DeactivatePower; // Define what happens when the timer ends
+            powerTimer.Tick += DeactivatePower;
+
+            // Initialize the power stack label
+            PowerStackLabel = new Label();
+            PowerStackLabel.Location = new Point(500, 32);
+            PowerStackLabel.Size = new Size(300, 100);
+            PowerStackLabel.Font = new Font("SimSun-ExtB", 14.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            PowerStackLabel.Text = "Powers: ";
+            Controls.Add(PowerStackLabel);
+
+            UpdatePowerStackDisplay();
         }
 
-        // Identify key press
+        // Función para generar ítems o poderes de forma gradual
+        private void SpawnItemOrPower(object sender, EventArgs e)
+        {
+            // Alterna entre generar ítems y poderes de forma aleatoria
+            if (random.Next(2) == 0)
+            {
+                GenerateItems();
+            }
+            else
+            {
+                TakePower();
+            }
+        }
+
+        // Identificar la tecla presionada
         private void KeyIsDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left && Settings.Directions != "right")
@@ -81,9 +110,13 @@ namespace TronFinal
             {
                 ActivatePower();
             }
+            if (e.KeyCode == Keys.R)
+            {
+                RotatePowerStack(); // Rotate powers with "R"
+            }
         }
 
-        // Identify key release
+        // Identificar la tecla soltada
         private void KeyIsUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left) goLeft = false;
@@ -91,18 +124,16 @@ namespace TronFinal
             if (e.KeyCode == Keys.Up) goUp = false;
             if (e.KeyCode == Keys.Down) goDown = false;
         }
+
         private void TimeEvent(object sender, EventArgs e)
         {
-            // Update the direction for the player
             if (goLeft) Settings.Directions = "left";
             if (goRight) Settings.Directions = "right";
             if (goDown) Settings.Directions = "down";
             if (goUp) Settings.Directions = "up";
 
-            // Move the player
             MoveBikes(player, Settings.Directions);
 
-            // Move all the bots
             foreach (var bot in bots)
             {
                 MoveBikes(bot, botsDirections[bot]);
@@ -111,27 +142,21 @@ namespace TronFinal
             CheckCollisions();
 
             gasQuantity -= 1;
+            CombustibleLabel.Text = "Combustible: " + (gasQuantity / 10).ToString();
             if (gasQuantity <= 0)
             {
-                StopGame(); // Stop the game if gas runs out
+                StopGame();
             }
             GameCanvas.Invalidate();
         }
 
-        // Start the game
         private void StartGame(object sender, EventArgs e)
         {
             RestartGame();
         }
+
         private void RestartGame()
         {
-            // create a new grid
-            Grid grid = new Grid();
-            for (int i = 1; i <= 100; i++)
-            {
-                grid.AddNode(i);
-            }
-
             gasQuantity = 1000;
             powerStack.Clear();
 
@@ -143,8 +168,6 @@ namespace TronFinal
             botsDirections.Clear();
 
             StartBtn.Enabled = false;
-
-
 
             Bike head = new Bike(10, 5);
             player.AddFirst(head);
@@ -175,6 +198,7 @@ namespace TronFinal
 
             gameTimer.Start();
         }
+
         private void StopGame()
         {
             gameTimer.Stop();
@@ -182,13 +206,9 @@ namespace TronFinal
             StartBtn.Enabled = true;
         }
 
-        // Handle event
-        
-
-        // Handle the player movement
         private void MoveBikes(LinkedList<Bike> bikeList, string direction)
         {
-            if (bikeList.First == null || bikeList.Last == null) return; // Ensure the bike is not null
+            if (bikeList.First == null || bikeList.Last == null) return;
 
             var head = bikeList.First.Value;
             Bike newHead = new Bike(head.X, head.Y);
@@ -198,6 +218,7 @@ namespace TronFinal
             bikeList.AddFirst(newHead);
             bikeList.RemoveLast();
         }
+
         private void ChangeBotsDirection(object sender, EventArgs e)
         {
             foreach (var bot in bots)
@@ -210,13 +231,12 @@ namespace TronFinal
 
         private void CheckCollisions()
         {
-            if (player.First == null) return; // Ensure player bike has at least one segment
+            if (player.First == null) return;
 
-            var head = player.First.Value; // Player's head
+            var head = player.First.Value;
 
             if (!isInvincible)
             {
-                // Check for self-collision (player collides with itself)
                 var current = player.First.Next;
                 while (current != null)
                 {
@@ -227,128 +247,248 @@ namespace TronFinal
                     }
                     current = current.Next;
                 }
-                
 
-                // Check for collisions with bot heads
-                foreach (var bot in bots.ToList()) // Use ToList() to modify the collection safely
+                foreach (var bot in bots.ToList())
                 {
                     var botHead = bot.First?.Value;
-                    if (botHead == null) continue; // Ensure bot has a head
+                    if (botHead == null) continue;
 
                     foreach (var segment in bot)
                     {
                         if (head.X == segment.X && head.Y == segment.Y)
                         {
-                            StopGame(); // End the game if the player collides with a bot
+                            StopGame();
                             return;
                         }
                     }
-                    // If bot's head collides with any part of the player, remove the bot
                     foreach (var playerSegment in player)
                     {
                         if (botHead.CollidesWith(playerSegment))
                         {
-                            bots.Remove(bot); // Remove the bot from the game
-                            return; // Exit the collision check after removing the bot
+                            bots.Remove(bot);
+                            return;
                         }
                     }
-
-                    // Check for collisions between bots
                     foreach (var otherBot in bots.ToList())
                     {
-                        if (otherBot == bot) continue; // Skip self-collision check for the same bot
+                        if (otherBot == bot) continue;
                         foreach (var otherSegment in otherBot)
                         {
                             if (botHead.X == otherSegment.X && botHead.Y == otherSegment.Y)
                             {
-                                bots.Remove(bot); // Remove the bot that collided
+                                bots.Remove(bot);
+                                bots.Remove(otherBot);
                                 return;
                             }
                         }
                     }
                 }
             }
-            // Check for collisions with power-up
-            if (head.CollidesWith(power))
+
+            foreach (var power in powers.ToList())
             {
+                if (head.CollidesWith(power))
+                {
+                    powers.Remove(power);
                     TakePower();
+                    UpdatePowerStackDisplay();
+                }
             }
 
-            // Check for collisions with items
-            if (head.CollidesWith(item))
+            foreach (var item in items.ToList())
             {
-                ApplyItemEffect(currentItemType); // Apply effect based on item type
-                GenerateItem(); // Generate a new item
+                if (head.CollidesWith(item))
+                {
+                    ApplyItemEffect(itemTypes[item]);
+                    items.Remove(item);
+                }
             }
         }
-        
 
         private void UpdatePictureBox(object sender, PaintEventArgs e)
         {
             Graphics canvas = e.Graphics;
-
-            // Rainbow colors for invincibility
-            Color[] rainbowColors = new Color[] { Color.Red, Color.Orange, Color.Yellow, Color.Green, Color.Blue, Color.Indigo, Color.Violet };
-            int colorIndex = 0; // To cycle through the rainbow colors
-
             Brush bikeColour;
 
+            // Dibujar la moto del jugador
             foreach (var segment in player)
             {
-                // Check if the player is invincible to apply rainbow effect
                 if (isInvincible)
                 {
-                    // Cycle through rainbow colors for each segment
-                    bikeColour = new SolidBrush(rainbowColors[colorIndex % rainbowColors.Length]);
-                    colorIndex++; // Move to the next color in the array
+                    bikeColour = new SolidBrush(rainbowColors[currentRainbowColorIndex % rainbowColors.Length]);
+                    currentRainbowColorIndex++;
                 }
                 else
                 {
-                    // Regular bike colors
-                    bikeColour = segment == player.First.Value ? Brushes.Black : Brushes.Blue;
+                    bikeColour = segment == player.First.Value ? Brushes.LightSkyBlue : Brushes.Blue;
                 }
 
-                // Draw the segment as a rectangle
                 canvas.FillRectangle(bikeColour, new Rectangle(segment.X * Settings.Width, segment.Y * Settings.Height, Settings.Width, Settings.Height));
             }
 
-            // Draw bots
+            // Dibujar los bots
             foreach (var bot in bots)
             {
                 foreach (var segment in bot)
                 {
-                    canvas.FillRectangle(Brushes.Orange, new Rectangle(segment.X * Settings.Width, segment.Y * Settings.Height, Settings.Width, Settings.Height));
+                    Brush botColour = segment == bot.First.Value ? Brushes.Orange : Brushes.OrangeRed;
+                    canvas.FillRectangle(botColour, new Rectangle(segment.X * Settings.Width, segment.Y * Settings.Height, Settings.Width, Settings.Height));
                 }
             }
 
-            // Draw the power-up
-            canvas.FillEllipse(Brushes.White, new Rectangle(power.X * Settings.Width, power.Y * Settings.Height, Settings.Width, Settings.Height));
-
-
-            // Draw items
-            Brush itemBrush;
-            switch (currentItemType)
+            // Dibujar los poderes (si están en el mapa)
+            foreach (var power in powers)
             {
-                case "length":
-                    itemBrush = Brushes.Green;
-                    break;
-                case "gas":
-                    itemBrush = Brushes.Blue;
-                    break;
-                case "bomb":
-                    itemBrush = Brushes.Red;
-                    break;
-                default:
-                    itemBrush = Brushes.Gray; // Default case
-                    break;
+                canvas.FillEllipse(Brushes.Orange, new Rectangle(power.X * Settings.Width, power.Y * Settings.Height, Settings.Width, Settings.Height));
             }
 
-            canvas.FillRectangle(itemBrush, new Rectangle(item.X * Settings.Width, item.Y * Settings.Height, Settings.Width, Settings.Height));
+            // Dibujar los ítems con colores diferentes según su tipo
+            foreach (var item in items)
+            {
+                Brush itemColour;
+
+                // Verificar el tipo de ítem y asignar el color correspondiente
+                switch (itemTypes[item])
+                {
+                    case "length":
+                        itemColour = Brushes.Green; // Color verde para "length"
+                        break;
+                    case "gas":
+                        itemColour = Brushes.Yellow; // Color amarillo para "gas"
+                        break;
+                    case "bomb":
+                        itemColour = Brushes.Red; // Color rojo para "bomb"
+                        break;
+                    default:
+                        itemColour = Brushes.Gray; // Color gris si no se reconoce el tipo
+                        break;
+                }
+
+                canvas.FillEllipse(itemColour, new Rectangle(item.X * Settings.Width, item.Y * Settings.Height, Settings.Width, Settings.Height));
+            }
         }
 
-        
+        private void ApplyItemEffect(string itemType)
+        {
+            currentItemType = itemType;
+
+            switch (itemType)
+            {
+                case "length":
+                    AddLength();
+                    break;
+                case "gas":
+                    AddGas();
+                    break;
+                case "bomb":
+                    BombEffect();
+                    break;
+            }
+        }
+
+        private void AddLength()
+        {
+            Bike tail = player.Last.Value;
+            Bike newSegment = new Bike(tail.X, tail.Y);
+            player.AddLast(newSegment);
+            player.AddLast(newSegment);
+            player.AddLast(newSegment);
+        }
+
+        private void AddGas()
+        {
+            gasQuantity += 1000;
+        }
+
+        private void BombEffect()
+        {
+            StopGame();
+        }
 
         private void ActivatePower()
+        {
+            if (powerStack.Count > 0 && !isPowerActive)
+            {
+                string power = powerStack.Pop();
+                isPowerActive = true;
+
+                switch (power)
+                {
+                    case "speed_boost":
+                        ActivateSpeedBoost();
+                        break;
+                    case "invincible":
+                        ActivateInvincibility();
+                        break;
+                }
+
+                powerTimer.Start();
+                UpdatePowerStackDisplay();
+            }
+        }
+
+        private void TakePower()
+        {
+            Bike newPower = new Bike(random.Next(10, maxWidth), random.Next(10, maxHeight));
+            powers.Add(newPower);
+
+            string[] possiblePowers = { "speed_boost", "invincible" };
+            string powerUp = possiblePowers[random.Next(possiblePowers.Length)];
+            powerStack.Push(powerUp);
+            
+        }
+
+        private void GenerateItems()
+        {
+            Bike newItem = new Bike(random.Next(1, maxWidth), random.Next(1, maxHeight));
+            items.Add(newItem);
+
+            string[] itemTypesArray = { "length", "gas", "bomb" };
+            string itemType = itemTypesArray[random.Next(itemTypesArray.Length)];
+            itemTypes[newItem] = itemType;
+        }
+
+        private void ActivateSpeedBoost()
+        {
+            gameTimer.Interval=20;
+            isSpeedBoosted = true;
+        }
+
+        private void ActivateInvincibility()
+        {
+            isInvincible = true;
+        }
+
+        private void DeactivatePower(object sender, EventArgs e)
+        {
+            isPowerActive = false;
+            isInvincible = false;
+            isSpeedBoosted = false;
+            gameTimer.Interval=50;
+            powerTimer.Stop();
+        }
+        private void UpdatePowerStackDisplay()
+        {
+            PowerStackLabel.Text = "Powers: ";
+
+            foreach (var power in powerStack)
+            {
+                PowerStackLabel.Text += power + " ";
+            }
+        }
+        private void RotatePowerStack()
+        {
+            if (powerStack.Count > 1)
+            {
+                string topPower = powerStack.Pop();
+                var tempQueue = new Queue<string>(powerStack);
+                tempQueue.Enqueue(topPower);
+                powerStack = new Stack<string>(tempQueue.Reverse());
+
+                UpdatePowerStackDisplay();
+            }
+        }
+        private void ApplyTopPower()
         {
             if (powerStack.Count > 0 && !isPowerActive)
             {
@@ -368,84 +508,9 @@ namespace TronFinal
                     powerTimer.Start(); // Start the 5-second timer
                 }
 
-                isPowerActive = true; // Mark that a power is active
-                powerTimer.Start(); // Start the 5-second timer
+                UpdatePowerStackDisplay(); // Update stack after applying the power
             }
         }
-
-        // Deactivate the power-up after 5 seconds
-        private void DeactivatePower(object sender, EventArgs e)
-        {
-
-            // Revert power-up effects after 5 seconds
-            if (isInvincible)
-            {
-                isInvincible = false; // Deactivate invincibility
-                currentRainbowColorIndex = 0; // Reset rainbow color index
-            }
-
-            if (isSpeedBoosted)
-            {
-                gameTimer.Interval = 50; // Revert the speed boost
-            }
-
-            isPowerActive = false; // Mark power as inactive
-            powerTimer.Stop(); // Stop the timer
-        }
-
-        private void TakePower()
-        {
-            power = new Bike(random.Next(10, maxWidth), random.Next(10, maxHeight));
-            
-            // Randomly assign a power-up (either speed boost or invincibility)
-            string[] possiblePowers = { "speed_boost", "invincible" };
-            string powerUp = possiblePowers[random.Next(possiblePowers.Length)];
-            powerStack.Push(powerUp);
-            
-        }
-
-        private void TakeItem()
-        {
-            item = new Bike(random.Next(30, maxWidth), random.Next(30, maxHeight));
-            var tail = player.Last.Value;
-            Bike newTail = new Bike(tail.X, tail.Y);
-            player.AddLast(newTail);
-            player.AddLast(newTail);
-        }
-
-        private void GenerateItem()
-        {
-            item = new Bike(random.Next(1, maxWidth), random.Next(1, maxHeight));
-            string[] itemTypes = { "length", "gas", "bomb" };
-            currentItemType = itemTypes[random.Next(itemTypes.Length)];
-        }
-        private void ApplyItemEffect(string itemType)
-        {
-            switch (itemType)
-            {
-                case "length":
-                    var tail = player.Last.Value;
-                    Bike newTail = new Bike(tail.X, tail.Y);
-                    player.AddLast(newTail); // Increase length
-                    player.AddLast(newTail);
-                    break;
-                case "gas":
-                    HandleGas();
-                    break;
-                case "bomb":
-                    // Implement bomb effect (e.g., eliminate a bot)
-                    HandleBombEffect();
-                    break;
-            }
-        }
-        private void HandleBombEffect()
-        {
-            StopGame();
-        }
-        private void HandleGas() 
-        {
-            gasQuantity = 100;
-        }
-
     }
+
 }

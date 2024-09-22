@@ -33,6 +33,7 @@
             StartBtn = new Button();
             GameTime = new System.Windows.Forms.Timer(components);
             Scoretxt = new Label();
+            CombustibleLabel = new Label();
             ((System.ComponentModel.ISupportInitialize)GameCanvas).BeginInit();
             SuspendLayout();
             // 
@@ -70,12 +71,23 @@
             Scoretxt.Size = new Size(0, 15);
             Scoretxt.TabIndex = 2;
             // 
+            // CombustibleLabel
+            // 
+            CombustibleLabel.AutoSize = true;
+            CombustibleLabel.Font = new Font("SimSun-ExtB", 14.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            CombustibleLabel.Location = new Point(291, 32);
+            CombustibleLabel.Name = "CombustibleLabel";
+            CombustibleLabel.Size = new Size(119, 19);
+            CombustibleLabel.TabIndex = 3;
+            CombustibleLabel.Text = "Combustible";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ControlDarkDark;
             ClientSize = new Size(1322, 759);
+            Controls.Add(CombustibleLabel);
             Controls.Add(Scoretxt);
             Controls.Add(StartBtn);
             Controls.Add(GameCanvas);
@@ -95,5 +107,7 @@
         private Button StartBtn;
         private System.Windows.Forms.Timer GameTime;
         private Label Scoretxt;
+        private Label CombustibleLabel;
+        
     }
 }
